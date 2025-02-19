@@ -1,0 +1,53 @@
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: clickhouse
+    ports:
+      - "8123:8123"   # HTTP-интерфейс ClickHouse
+      - "9000:9000"   # Нативный интерфейс ClickHouse
+    environment:
+      - CLICKHOUSE_USER=admin
+      - CLICKHOUSE_PASSWORD=admin
+    volumes:
+        - ./clickhouse/data:/var/lib/clickhouse
+#        - ./clickhouse/config:/etc/clickhouse-server
+        - ./clickhouse/logs:/var/log
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"  # Максимальный размер файла лога
+        max-file: "3"    # Количество файлов, после которого логи будут перезаписываться
+    networks:
+      - xcvzv97opkje
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"   # Веб-интерфейс Grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin  # Задаём пароль администратора
+    depends_on:
+      - clickhouse
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - xcvzv97opkje
+
+  vector:
+    image: timberio/vector:latest-debian
+    container_name: vector
+    command: [ "-c", "/etc/vector/vector.toml" ]
+    volumes:
+      - ./vector/vector.toml:/etc/vector/vector.toml:ro
+      - ./vector/logs:/var/log/containers:ro
+    depends_on:
+      - clickhouse
+
+
+networks:
+  xcvzv97opkje:
+    external: true

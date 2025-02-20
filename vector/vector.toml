@@ -1,24 +1,17 @@
-# Источник логов — файлы контейнеров
-[sources.container_logs]
-type = "file"
-include = ["/var/log/containers/*.log"]
-ignore_older = 86400  # игнорировать файлы старше 1 дня
-
-# (Опционально) Преобразование: попытка разобрать JSON, если логи в формате JSON
-[transforms.parse_json]
-type = "json_parser"
-inputs = ["container_logs"]
-drop_invalid = true
+[sources.emulators]
+type = "docker_logs"
+include_containers = ["logg_emulator_one"]
 
 # Синк для ClickHouse
 [sinks.clickhouse]
+strategy = "insert"
 type = "clickhouse"
-inputs = ["parse_json"]
-endpoint = "http://clickhouse:8123"   # адрес сервера ClickHouse (изнутри кластера)
-database = "default"                  # имя базы данных
-table = "logs"                        # имя таблицы, куда будут записываться логи
-compression = "gzip"                  # (опционально) сжатие
-batch.max_bytes = 10485760
-batch.timeout_secs = 1
+inputs = ["emulators"]
+endpoint = "http://clickhouse:8123"
+database = "default"
 auth.user = "admin"
 auth.password = "admin"
+table = "logs"
+compression = "gzip"
+batch.max_bytes = 10485760
+batch.timeout_secs = 1

@@ -21,9 +21,14 @@ up:
 	@echo "Успешно!"
 	clear
 	@echo "Выводим логи ClickHouse..."
-	docker compose logs -f clickhouse
+	docker compose logs -f vector
 
 down:
 	@echo "Останавливаем..."
 	docker compose down
 	@echo "Успешно!"
+
+test:
+	docker compose up -d --force-recreate vector
+	docker exec -it vector cat /etc/vector/vector.toml
+	docker compose logs -f vector

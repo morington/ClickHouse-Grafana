@@ -40,13 +40,42 @@ services:
   vector:
     image: timberio/vector:latest-debian
     container_name: vector
-    command: [ "-c", "/etc/vector/vector.toml" ]
+    command: ["-c", "/etc/vector/vector.yaml"]
     volumes:
       - ./vector/vector.toml:/etc/vector/vector.toml:ro
       - ./vector/logs:/var/log/containers:ro
     depends_on:
       - clickhouse
 
+  logg_emulator_one:
+    image: "python:3.11"
+    container_name: "logg_emulator_one"
+    working_dir: "/app"
+    command: [ "/bin/sh", "-c", "pip install -r /app/requirements.txt && export PYTHONPATH=/app && python main.py" ]
+    volumes:
+      - ./requirements.txt:/app/requirements.txt
+      - ./main.py:/app/main.py
+      - ./improved_logging:/app/improved_logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  logg_emulator_two:
+    image: "python:3.11"
+    container_name: "logg_emulator_two"
+    working_dir: "/app"
+    command: [ "/bin/sh", "-c", "pip install -r /app/requirements.txt && export PYTHONPATH=/app && python main.py" ]
+    volumes:
+      - ./requirements.txt:/app/requirements.txt
+      - ./main.py:/app/main.py
+      - ./improved_logging:/app/improved_logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   xcvzv97opkje:

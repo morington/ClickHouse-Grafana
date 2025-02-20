@@ -30,5 +30,5 @@ down:
 
 test:
 	docker compose up -d --force-recreate vector
-	docker exec -it vector cat /etc/vector/vector.toml
+	#docker exec -it vector cat /etc/vector/vector.toml
 	docker compose logs -f vector

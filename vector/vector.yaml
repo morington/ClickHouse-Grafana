@@ -1,0 +1,19 @@
+sources:
+  emulators:
+    type: "docker_logs"
+    include_containers:
+      - "logg_emulator_one"
+
+sinks:
+  clickhouse:
+    type: "clickhouse"
+    inputs:
+      - "emulators"
+    endpoint: "http://clickhouse:8123"
+    database: "default"
+    table: "logs"
+    strategy: "insert"
+    auth:
+      user: "admin"
+      password: "admin"
+      strategy: "basic"

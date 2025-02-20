@@ -8,9 +8,10 @@ services:
     environment:
       - CLICKHOUSE_USER=admin
       - CLICKHOUSE_PASSWORD=admin
+      - CLICKHOUSE_LOG_LEVEL=debug
     volumes:
         - ./clickhouse/data:/var/lib/clickhouse
-#        - ./clickhouse/config:/etc/clickhouse-server
+        - ./clickhouse/config/http.xml:/etc/clickhouse-server/config.d/http.xml
         - ./clickhouse/logs:/var/log
     logging:
       driver: "json-file"
@@ -19,16 +20,24 @@ services:
         max-file: "3"    # Количество файлов, после которого логи будут перезаписываться
     networks:
       - xcvzv97opkje
+    healthcheck:
+      test: [ "CMD", "clickhouse-client", "-u", "admin", "--password", "admin", "--query", "SELECT 1" ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
     ports:
-      - "3000:3000"   # Веб-интерфейс Grafana
+      - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin  # Задаём пароль администратора
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=grafana-clickhouse-datasource
     depends_on:
       - clickhouse
+    volumes:
+      - ./grafana/data:/var/lib/grafana  # Сохраняем данные Grafana на хосте
     logging:
       driver: "json-file"
       options:
@@ -38,14 +47,18 @@ services:
       - xcvzv97opkje
 
   vector:
-    image: timberio/vector:latest-debian
+    image: timberio/vector:0.36.0-debian
     container_name: vector
-    command: ["-c", "/etc/vector/vector.yaml"]
+    command: ["-c", "/etc/vector/vector.toml"]
     volumes:
       - ./vector/vector.toml:/etc/vector/vector.toml:ro
       - ./vector/logs:/var/log/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
-      - clickhouse
+      clickhouse:
+        condition: service_healthy
+    networks:
+      - xcvzv97opkje
 
   logg_emulator_one:
     image: "python:3.11"

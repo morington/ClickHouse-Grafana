@@ -40,7 +40,7 @@ async def simulate_user_session(username):
 
         num_events = randint(2, 6)
         for _ in range(num_events):
-            await asyncio.sleep(randint(1, 10))
+            # await asyncio.sleep(randint(1, 10))
             _event = choice(["profile", "products", "view_product", "logout", "delete_account"])
 
             if _event == "profile":

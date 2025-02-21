@@ -11,3 +11,25 @@ log(.)
 
 Зайти в ClickHouse Client:
 docker exec -it clickhouse clickhouse-client --host localhost --port 9000 --user admin --password admin
+
+
+Общий размер данных на диске и количество строк:
+SELECT
+    database,
+    formatReadableSize(sum(bytes_on_disk)) AS total_size,
+    sum(rows) AS total_rows
+FROM system.parts
+GROUP BY database
+ORDER BY total_size DESC;
+
+
+Очистка логов system.query_log:
+TRUNCATE TABLE system.query_log;
+
+
+SELECT
+    database,
+    sum(bytes_on_disk) / 1024 / 1024 AS db_size_mb
+FROM system.parts
+WHERE database = 'default'
+GROUP BY database

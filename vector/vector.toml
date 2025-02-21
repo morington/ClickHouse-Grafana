@@ -2,9 +2,80 @@
 type = "docker_logs"
 include_containers = ["logg_emulator_one"]
 
-[sinks.clickhouse]
-type = "clickhouse"
+[transforms.parse_json]
+type = "remap"
 inputs = ["emulators"]
+source = '''
+json = parse_json(.message) ?? {}
+. = merge!(., json)
+del(.message)
+'''
+
+[transforms.common_remap]
+type = "remap"
+inputs = ["parse_json"]
+source = '''
+.stream_id = .stream_id
+.timestramp = parse_timestamp!(.timestamp, "%Y-%m-%d %H:%M:%S")
+.event_id = if ._event == "login" {
+    1
+} else if ._event == "delete_account" {
+    2
+} else if ._event == "profile" {
+    3
+} else if ._event == "products" {
+    4
+} else if ._event == "view_product" {
+    5
+} else if ._event == "logout" {
+    6
+} else {
+    999
+}
+'''
+
+[transforms.for_logs]
+type = "remap"
+inputs = ["common_remap"]
+source = '''
+.service = if .logger == null { "default_service" } else { .logger }
+
+.stream_id = .stream_id
+.timestamp = .timestamp
+
+. = {
+  "stream_id": .stream_id,
+  "user_id": to_int!(.user_id),
+  "event_id": to_int!(.event_id),
+  "timestamp": .timestamp,
+  "level": .level,
+  "service": .service
+}
+'''
+
+[transforms.for_usernames]
+type = "remap"
+inputs = ["common_remap"]
+source = '''
+.username = if .username == null { "unknown" } else { .username }
+
+. = {
+  "user_id": .user_id,
+  "username": .username
+}
+'''
+
+[transforms.debug_logs]
+type = "remap"
+inputs = ["for_logs"]
+source = '''
+log(.)
+'''
+
+
+[sinks.clickhouse_logs]
+type = "clickhouse"
+inputs = ["for_logs"]
 endpoint = "http://clickhouse:8123"
 database = "default"
 table = "logs"
@@ -13,3 +84,18 @@ auth.password = "admin"
 auth.strategy = "basic"
 healthcheck.enabled = true
 healthcheck.timeout_secs = 30
+
+[sinks.clickhouse_usernames]
+type = "clickhouse"
+inputs = ["for_usernames"]
+endpoint = "http://clickhouse:8123"
+database = "default"
+table = "usernames"
+auth.user = "admin"
+auth.password = "admin"
+auth.strategy = "basic"
+healthcheck.enabled = true
+healthcheck.timeout_secs = 30
+
+[log_schema]
+level = "debug"

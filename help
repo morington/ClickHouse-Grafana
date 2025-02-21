@@ -1,0 +1,13 @@
+Проверка формата для ClickHouse:
+curl -X POST "http://0.0.0.0:8123/?query=INSERT%20INTO%20logs%20FORMAT%20JSONEachRow" -H "Content-Type: application/json" --user admin:admin --data-binary '{"event_id":1,"level":"MAIN - info","service":"main.py:simulate_user_session:30","stream_id":"bffc3672-bd39-4055-bba9-c6a217feaf77","timestamp":"2025-02-21 10:02:03","user_id":41401}'
+
+Debug формата для Vector:
+[transforms.debug_logs]
+type = "remap"
+inputs = ["for_logs"]
+source = '''
+log(.)
+'''
+
+Зайти в ClickHouse Client:
+docker exec -it clickhouse clickhouse-client --host localhost --port 9000 --user admin --password admin

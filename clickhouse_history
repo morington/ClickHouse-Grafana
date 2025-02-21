@@ -1,0 +1,101 @@
+=======================================================
+DROP VIEW IF EXISTS logs_full;
+
+DROP DICTIONARY IF EXISTS events_dict;
+DROP DICTIONARY IF EXISTS usernames_dict;
+
+DROP TABLE IF EXISTS logs;
+DROP TABLE IF EXISTS events;
+DROP TABLE IF EXISTS usernames;
+=======================================================
+
+
+CREATE TABLE logs (
+    stream_id String,
+    user_id Int64,
+    event_id Int32,
+    timestamp DateTime('Europe/Moscow'),
+    level String,
+    service String
+) ENGINE = ReplacingMergeTree()
+ORDER BY stream_id;
+
+
+CREATE TABLE events (
+    event_id Int32,
+    description String
+) ENGINE = ReplacingMergeTree()
+ORDER BY event_id;
+
+
+CREATE TABLE usernames (
+    user_id Int64,
+    username String
+) ENGINE = ReplacingMergeTree()
+ORDER BY user_id;
+
+
+CREATE DICTIONARY events_dict
+(
+    event_id Int32,
+    description String
+)
+PRIMARY KEY event_id
+SOURCE(CLICKHOUSE(
+    host 'clickhouse'
+    port 8123
+    user 'admin'
+    password 'admin'
+    db 'default'
+    table 'events'
+))
+LIFETIME(MIN 60 MAX 300)
+LAYOUT(FLAT());
+
+
+CREATE DICTIONARY usernames_dict
+(
+    user_id Int64,
+    username String
+)
+PRIMARY KEY user_id
+SOURCE(CLICKHOUSE(
+    host 'clickhouse'
+    port 8123
+    user 'admin'
+    password 'admin'
+    db 'default'
+    table 'usernames'
+))
+LIFETIME(MIN 60 MAX 300)
+LAYOUT(FLAT());
+
+
+CREATE VIEW logs_full AS
+SELECT
+    l.stream_id,
+    l.user_id,
+    u.username,
+    l.event_id,
+    e.description AS event_description,
+    l.timestamp,
+    l.level,
+    l.service
+FROM logs l
+LEFT JOIN events e ON l.event_id = e.event_id
+LEFT JOIN usernames u ON l.user_id = u.user_id;
+
+
+INSERT INTO events (event_id, description) VALUES
+    (1, 'login'),
+    (2, 'delete_account'),
+    (3, 'profile'),
+    (4, 'products'),
+    (5, 'view_product'),
+    (6, 'logout'),
+    (999, 'unknown');
+
+
+OPTIMIZE TABLE logs FINAL;
+OPTIMIZE TABLE events FINAL;
+OPTIMIZE TABLE usernames FINAL;
